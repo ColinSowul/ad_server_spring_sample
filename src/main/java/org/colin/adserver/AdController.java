@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,9 +17,9 @@ public class AdController {
   private static final Map<String, AdCampaign> adDataStore = new ConcurrentHashMap<>();
 
   @GetMapping("/ad/{partnerId}")
-  public AdCampaign fetchAd(@PathVariable String partnerId) {
+  public AdCampaign fetchAd(@PathVariable String partnerId) throws Exception {
     AdCampaign campaign = adDataStore.get(partnerId);
-    //TODO: Error if ad is expired
+    if(Instant.now().compareTo(campaign.getExpiration()) > 0) throw new Exception("Ad for partner \"" + partnerId + "\" has expired");
     return campaign;
   }
 
@@ -28,11 +29,11 @@ public class AdController {
   }
 
   @PostMapping("/ad")
-  public AdCampaign addAd(@RequestBody AdCampaign newAd) {
-    System.out.println("---------------- newAd ----------------");
-    System.out.println(newAd);
+  public String addAd(@RequestBody AdCampaign newAd) throws Exception {
     if(newAd.getExpiration() == null) newAd.setExpirationFromDuration();
+    if(adDataStore.containsKey(newAd.getPartnerId()) && Instant.now().compareTo(newAd.getExpiration()) <= 0)
+      throw new Exception("Ad for partner \"" + newAd.getPartnerId() + "\" already exists");
     adDataStore.put(newAd.getPartnerId(), newAd);
-    return newAd;
+    return "Ad for parter \"" + newAd.getPartnerId() + "\" has been registered successfully";
   }
 }
